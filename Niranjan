@@ -1,0 +1,39 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# Step 1: Load the dataset
+df = pd.read_csv("cricket_player_stats.csv")  # Replace with your actual dataset
+
+# Step 2: Exploratory Data Analysis (EDA)
+print(df.describe())
+df['Runs'].hist(bins=10)
+plt.title("Runs Distribution")
+plt.xlabel("Runs")
+plt.ylabel("Frequency")
+plt.show()
+
+# Step 3: Feature Engineering (optional)
+df['PerformanceScore'] = (df['Runs'] * 0.6 + df['Wickets'] * 10 + df['StrikeRate'] * 0.4)
+
+# Step 4: Prepare data for modeling
+features = ['Runs', 'Wickets', 'StrikeRate']
+X = df[features]
+y = df['Selected']  # 1 for selected, 0 for not selected
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Step 5: Model Building
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Step 6: Evaluation
+y_pred = model.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+# Step 7: Prediction on new player
+new_player = pd.DataFrame([[500, 7, 90]], columns=features)
+print("Predicted selection:", model.predict(new_player)[0])
