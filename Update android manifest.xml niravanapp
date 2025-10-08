@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.niraven.app">
+
+    <!-- Permissions for BOTH sections -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:name=".NiravenApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher_niraven"
+        android:label="Niraven"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        
+        <!-- Login -->
+        <activity android:name=".LoginActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Main Sections -->
+        <activity android:name=".MainDashboardActivity" 
+                  android:screenOrientation="portrait"/>
+        <activity android:name=".ChatAnalyzerActivity" 
+                  android:screenOrientation="portrait"/>
+        <activity android:name=".BluetoothChatActivity" 
+                  android:screenOrientation="portrait"/>
+        
+    </application>
+</manifest>
