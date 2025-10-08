@@ -1,0 +1,108 @@
+package com.niraven.app;
+
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class LoginActivity extends AppCompatActivity {
+    
+    private EditText etUsername, etPassword;
+    private Button btnLogin, btnRegister;
+    private TextView tvAppName;
+    private NiravenApp app;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_login);
+        
+        app = NiravenApp.getInstance();
+        
+        initializeViews();
+        checkAutoLogin();
+        setupClickListeners();
+    }
+    
+    private void initializeViews() {
+        tvAppName = findViewById(R.id.tvAppName);
+        etUsername = findViewById(R.id.etUsername);
+        etPassword = findViewById(R.id.etPassword);
+        btnLogin = findViewById(R.id.btnLogin);
+        btnRegister = findViewById(R.id.btnRegister);
+        
+        // Set colorful app name
+        tvAppName.setText("NIRAVEN");
+    }
+    
+    private void checkAutoLogin() {
+        SharedPreferences prefs = app.getSharedPreferences();
+        if (prefs.getBoolean("loggedIn", false)) {
+            String username = prefs.getString("username", "");
+            if (!username.isEmpty()) {
+                startMainDashboard();
+            }
+        }
+    }
+    
+    private void setupClickListeners() {
+        btnLogin.setOnClickListener(v -> loginUser());
+        btnRegister.setOnClickListener(v -> registerUser());
+    }
+    
+    private void loginUser() {
+        String username = etUsername.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+        
+        SharedPreferences prefs = app.getSharedPreferences();
+        String savedUser = prefs.getString("username", "");
+        String savedPass = prefs.getString("password", "");
+        
+        if (username.equals(savedUser) && password.equals(savedPass)) {
+            // Initialize user mood
+            app.setUserMood("NEUTRAL", 0);
+            
+            Toast.makeText(this, "Welcome back, " + username + "! 🎉", Toast.LENGTH_SHORT).show();
+            startMainDashboard();
+        } else {
+            Toast.makeText(this, "Invalid credentials! ❌", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void registerUser() {
+        String username = etUsername.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+        
+        if (username.length() < 3) {
+            Toast.makeText(this, "Username must be 3+ characters!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        if (password.length() < 4) {
+            Toast.makeText(this, "Password must be 4+ characters!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        SharedPreferences.Editor editor = app.getSharedPreferences().edit();
+        editor.putString("username", username);
+        editor.putString("password", password);
+        editor.putBoolean("loggedIn", true);
+        editor.apply();
+        
+        // Initialize user mood
+        app.setUserMood("NEUTRAL", 0);
+        
+        Toast.makeText(this, "Account created! Welcome to Niraven! 🚀", Toast.LENGTH_SHORT).show();
+        startMainDashboard();
+    }
+    
+    private void startMainDashboard() {
+        Intent intent = new Intent(this, MainDashboardActivity.class);
+        startActivity(intent);
+        finish();
+    }
+}
