@@ -1,0 +1,239 @@
+package com.niraven.app;
+
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class ChatAnalyzerActivity extends AppCompatActivity {
+    
+    private ListView lvChatAnalysis;
+    private TextView tvAnalysisTitle;
+    private ArrayAdapter<String> analysisAdapter;
+    private List<String> analysisResults = new ArrayList<>();
+    private NiravenApp app;
+    
+    private Map<String, Integer> positiveWords = new HashMap<>();
+    private Map<String, Integer> negativeWords = new HashMap<>();
+    
+    private static final int SMS_PERMISSION_CODE = 100;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_chat_analyzer);
+        
+        app = NiravenApp.getInstance();
+        initializeEmotionMaps();
+        setupUI();
+        checkPermissionsAndAnalyze();
+    }
+    
+    private void initializeEmotionMaps() {
+        // Enhanced emotion dictionaries
+        positiveWords.put("happy", 3); positiveWords.put("good", 2); positiveWords.put("great", 3);
+        positiveWords.put("awesome", 4); positiveWords.put("excellent", 4); positiveWords.put("love", 5);
+        positiveWords.put("amazing", 4); positiveWords.put("perfect", 4); positiveWords.put("thanks", 2);
+        positiveWords.put("thank you", 2); positiveWords.put("welcome", 1); positiveWords.put("yes", 1);
+        positiveWords.put("ok", 1); positiveWords.put("okay", 1); positiveWords.put("sure", 1);
+        positiveWords.put("restaurant", 2); positiveWords.put("food", 2); positiveWords.put("fun", 3);
+        positiveWords.put("excited", 4); positiveWords.put("wonderful", 4); positiveWords.put("beautiful", 3);
+        
+        negativeWords.put("sad", 3); negativeWords.put("bad", 2); negativeWords.put("angry", 4);
+        negativeWords.put("hate", 5); negativeWords.put("terrible", 4); negativeWords.put("awful", 4);
+        negativeWords.put("no", 2); negativeWords.put("not", 2); negativeWords.put("never", 3);
+        negativeWords.put("stop", 3); negativeWords.put("problem", 2); negativeWords.put("wrong", 2);
+        negativeWords.put("sorry", 2); negativeWords.put("hurt", 4); negativeWords.put("upset", 3);
+        negativeWords.put("miss", 2); negativeWords.put("tired", 2); negativeWords.put("sick", 3);
+    }
+    
+    private void setupUI() {
+        lvChatAnalysis = findViewById(R.id.lvChatAnalysis);
+        tvAnalysisTitle = findViewById(R.id.tvAnalysisTitle);
+        
+        String username = app.getSharedPreferences().getString("username", "User");
+        tvAnalysisTitle.setText("Chat Analysis for " + username + " 📊");
+        
+        analysisAdapter = new ArrayAdapter<>(this, 
+            android.R.layout.simple_list_item_1, analysisResults);
+        lvChatAnalysis.setAdapter(analysisAdapter);
+    }
+    
+    private void checkPermissionsAndAnalyze() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_SMS) 
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, 
+                new String[]{android.Manifest.permission.READ_SMS}, SMS_PERMISSION_CODE);
+        } else {
+            analyzeChats();
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == SMS_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                analyzeChats();
+            } else {
+                analysisResults.add("❌ Permission denied. Using demo analysis...");
+                runDemoAnalysis();
+            }
+        }
+    }
+    
+    private void analyzeChats() {
+        analysisResults.clear();
+        analysisResults.add("🔍 Analyzing your messages...");
+        
+        int totalScore = 0;
+        int messageCount = 0;
+        
+        // Analyze real SMS messages
+        totalScore += analyzeSMSMessages();
+        messageCount += analysisResults.size() - 1; // Exclude the "Analyzing..." message
+        
+        // Add demo analysis for comprehensive results
+        totalScore += runDemoAnalysis();
+        messageCount += 7; // 7 demo messages
+        
+        // Calculate overall mood
+        if (messageCount > 0) {
+            int averageScore = totalScore / messageCount;
+            updateGlobalMood(averageScore);
+        }
+        
+        analysisAdapter.notifyDataSetChanged();
+    }
+    
+    private int analyzeSMSMessages() {
+        int totalScore = 0;
+        int count = 0;
+        
+        try {
+            Uri uri = Uri.parse("content://sms/inbox");
+            Cursor cursor = getContentResolver().query(uri, null, null, null, "date DESC LIMIT 20");
+            
+            if (cursor != null) {
+                while (cursor.moveToNext() && count < 10) { // Limit to 10 messages
+                    String address = cursor.getString(cursor.getColumnIndexOrThrow("address"));
+                    String body = cursor.getString(cursor.getColumnIndexOrThrow("body"));
+                    
+                    if (body != null && body.length() > 0) {
+                        int moodScore = analyzeMessageMood(body);
+                        String moodColor = getMoodColor(moodScore);
+                        String moodEmoji = getMoodEmoji(moodScore);
+                        
+                        String analysis = moodEmoji + " " + moodColor + " | " + 
+                                        getContactName(address) + ": " + 
+                                        body.substring(0, Math.min(50, body.length())) + 
+                                        (body.length() > 50 ? "..." : "");
+                        
+                        analysisResults.add(analysis);
+                        totalScore += moodScore;
+                        count++;
+                    }
+                }
+                cursor.close();
+            }
+        } catch (Exception e) {
+            analysisResults.add("⚠️ Could not read messages: " + e.getMessage());
+        }
+        
+        return totalScore;
+    }
+    
+    private int runDemoAnalysis() {
+        analysisResults.add("\n📱 DEMO WHATSAPP ANALYSIS:");
+        
+        String[] demoChats = {
+            "Hey, let's go to restaurant today!",
+            "Yes, sure! I'd love to go! That sounds amazing!",
+            "Great! Meet you at 7 PM? I'm so excited!",
+            "Perfect! See you there! This will be fun!",
+            "I'm feeling really sad today, had a terrible day",
+            "Sorry to hear that, what's wrong?",
+            "Nothing, just having a bad day at work"
+        };
+        
+        int totalScore = 0;
+        for (String chat : demoChats) {
+            int moodScore = analyzeMessageMood(chat);
+            String moodColor = getMoodColor(moodScore);
+            String moodEmoji = getMoodEmoji(moodScore);
+            
+            String analysis = moodEmoji + " " + moodColor + " | Demo: " + chat;
+            analysisResults.add(analysis);
+            totalScore += moodScore;
+        }
+        
+        return totalScore;
+    }
+    
+    private int analyzeMessageMood(String message) {
+        String lowerMessage = message.toLowerCase();
+        int positiveScore = 0;
+        int negativeScore = 0;
+        
+        for (Map.Entry<String, Integer> entry : positiveWords.entrySet()) {
+            if (lowerMessage.contains(entry.getKey())) {
+                positiveScore += entry.getValue();
+            }
+        }
+        
+        for (Map.Entry<String, Integer> entry : negativeWords.entrySet()) {
+            if (lowerMessage.contains(entry.getKey())) {
+                negativeScore += entry.getValue();
+            }
+        }
+        
+        return positiveScore - negativeScore;
+    }
+    
+    private String getMoodColor(int moodScore) {
+        if (moodScore >= 3) return "🟢 EXCELLENT";
+        else if (moodScore >= 1) return "🟡 GOOD"; 
+        else if (moodScore == 0) return "🟡 NEUTRAL";
+        else if (moodScore >= -2) return "🟠 LOW";
+        else return "🔴 BAD";
+    }
+    
+    private String getMoodEmoji(int moodScore) {
+        if (moodScore >= 3) return "😄";
+        else if (moodScore >= 1) return "🙂";
+        else if (moodScore == 0) return "😐";
+        else if (moodScore >= -2) return "😕";
+        else return "😢";
+    }
+    
+    private String getContactName(String address) {
+        // Simplified - in real app, you'd query contacts
+        if (address.contains("123")) return "John";
+        if (address.contains("456")) return "Sarah";
+        if (address.contains("789")) return "Mike";
+        return "Friend";
+    }
+    
+    private void updateGlobalMood(int averageScore) {
+        String mood;
+        if (averageScore >= 3) mood = "EXCELLENT";
+        else if (averageScore >= 1) mood = "GOOD";
+        else if (averageScore >= -2) mood = "NEUTRAL";
+        else mood = "SAD";
+        
+        app.setUserMood(mood, averageScore);
+        
+        analysisResults.add(0, "🎯 OVERALL MOOD: " + mood + " (Score: " + averageScore + ")");
+        analysisResults.add(1, "=================================");
+    }
+}
