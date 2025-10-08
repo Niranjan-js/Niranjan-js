@@ -1,0 +1,72 @@
+package com.niraven.app;
+
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.widget.Button;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainDashboardActivity extends AppCompatActivity {
+    
+    private Button btnChatAnalyzer, btnBluetoothChat;
+    private TextView tvWelcome, tvMoodStatus;
+    private NiravenApp app;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_dashboard);
+        
+        app = NiravenApp.getInstance();
+        initializeViews();
+        displayUserInfo();
+        setupClickListeners();
+    }
+    
+    private void initializeViews() {
+        tvWelcome = findViewById(R.id.tvWelcome);
+        tvMoodStatus = findViewById(R.id.tvMoodStatus);
+        btnChatAnalyzer = findViewById(R.id.btnChatAnalyzer);
+        btnBluetoothChat = findViewById(R.id.btnBluetoothChat);
+    }
+    
+    private void displayUserInfo() {
+        String username = app.getSharedPreferences().getString("username", "User");
+        String mood = app.getCurrentUserMood();
+        int moodScore = app.getMoodScore();
+        String moodColor = app.getMoodColor();
+        
+        tvWelcome.setText("Welcome, " + username + "! 👋");
+        tvMoodStatus.setText("Current Mood: " + mood);
+        tvMoodStatus.setTextColor(Color.parseColor(moodColor));
+        
+        // Add mood emoji based on score
+        String emoji = getMoodEmoji(moodScore);
+        tvMoodStatus.setText(emoji + " Mood: " + mood + " " + emoji);
+    }
+    
+    private String getMoodEmoji(int score) {
+        if (score >= 3) return "😄";
+        else if (score >= 1) return "🙂";
+        else if (score >= -2) return "😐";
+        else return "😢";
+    }
+    
+    private void setupClickListeners() {
+        btnChatAnalyzer.setOnClickListener(v -> {
+            startActivity(new Intent(this, ChatAnalyzerActivity.class));
+        });
+        
+        btnBluetoothChat.setOnClickListener(v -> {
+            startActivity(new Intent(this, BluetoothChatActivity.class));
+        });
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh mood status when returning to dashboard
+        displayUserInfo();
+    }
+}
