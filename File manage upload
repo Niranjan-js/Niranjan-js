@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D File Upload Manager | Figmatic Design</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #f59e0b;
+            --accent: #ec4899;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --surface-light: #334155;
+            --text: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --success: #10b981;
+            --error: #ef4444;
+            --border-radius: 16px;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 80% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 10% 80%, rgba(245, 158, 11, 0.1) 0px, transparent 50%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(15deg);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-section {
+            background: var(--surface);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--surface-light);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            background: rgba(30, 41, 59, 0.5);
+            transform: translateZ(20px);
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+            transform: scaleX(0);
+            transition: transform 0.5s ease;
+        }
+
+        .upload-area:hover::before {
+            transform: scaleX(1);
+        }
+
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+            transform: translateZ(30px) scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            display: block;
+            filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.3));
+        }
+
+        .upload-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .browse-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+        }
+
+        .browse-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+        }
+
+        .upload-progress {
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: var(--surface-light);
+            border-radius: 50px;
+            overflow: hidden;
+            margin: 10px 0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 50px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, 0.2) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.2) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 20px 20px;
+            animation: moveStripes 1s linear infinite;
+        }
+
+        @keyframes moveStripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 20px 0; }
+        }
+
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transform-style: preserve-3d;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px) translateZ(10px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .files-section {
+            background: var(--surface);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .refresh-btn {
+            background: var(--surface-light);
+            color: var(--text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .refresh-btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .file-card {
+            background: var(--surface-light);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            transition: var(--transition);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transform-style: preserve-3d;
+            transform: translateZ(0);
+        }
+
+        .file-card:hover {
+            transform: translateY(-8px) translateZ(10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-secondary);
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+
+        .file-size {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .file-date {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .file-progress {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state p {
+            margin-top: 1rem;
+        }
+
+        /* 3D Effects */
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0% { transform: translate(0, 0px) rotate(0deg); }
+            50% { transform: translate(0, -15px) rotate(2deg); }
+            100% { transform: translate(0, 0px) rotate(0deg); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--surface);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform-style: preserve-3d;
+            animation: modalAppear 0.3s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            transition: var(--transition);
+        }
+
+        .close:hover {
+            color: var(--text);
+            transform: scale(1.1);
+        }
+
+        #fileInfo p {
+            margin: 10px 0;
+            padding: 10px;
+            background: var(--surface-light);
+            border-radius: 8px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .dashboard {
+                gap: 1.5rem;
+            }
+            
+            .upload-section, .files-section {
+                padding: 1.5rem;
+            }
+            
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .files-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon floating">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M14 2V8H20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 13H8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 17H8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 9H9H8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h1>FileFlow 3D</h1>
+            </div>
+            <p class="subtitle">Upload, manage, and organize your files with stunning 3D visuals and smooth interactions</p>
+        </header>
+
+        <div class="stats-section">
+            <div class="stat-card">
+                <div class="stat-value" id="totalFiles">0</div>
+                <div class="stat-label">Total Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalSize">0 MB</div>
+                <div class="stat-label">Total Storage</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uploadCount">0</div>
+                <div class="stat-label">Upload Sessions</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <span class="upload-icon">📁</span>
+                        <h3>Drag & Drop Files Here</h3>
+                        <p>or click to browse from your device</p>
+                        <input type="file" id="fileInput" multiple style="display: none;">
+                        <button class="browse-btn pulse" onclick="document.getElementById('fileInput').click()">
+                            Browse Files
+                        </button>
+                    </div>
+                </div>
+                <div class="upload-progress" id="uploadProgress">
+                    <h4>Uploading Files...</h4>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div id="uploadStatus">Preparing upload...</div>
+                </div>
+            </div>
+
+            <div class="files-section">
+                <div class="section-header">
+                    <h2>Your Files</h2>
+                    <button class="refresh-btn" onclick="loadFiles()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M23 4V10H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M1 20V14H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3.51 9C4.01717 7.56678 4.87913 6.2854 6.01547 5.27542C7.1518 4.26543 8.52547 3.55976 10.0083 3.22426C11.4911 2.88875 13.0348 2.93434 14.4952 3.35677C15.9556 3.77921 17.2853 4.56471 18.36 5.64L23 10M1 14L5.64 18.36C6.71475 19.4353 8.04437 20.2208 9.50481 20.6432C10.9652 21.0657 12.5089 21.1113 13.9917 20.7757C15.4745 20.4402 16.8482 19.7346 17.9845 18.7246C19.1209 17.7146 19.9828 16.4332 20.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+                <div class="files-grid" id="filesGrid">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <p>No files uploaded yet. Drag and drop files above to get started.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Info Modal -->
+    <div id="fileModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>File Information</h3>
+            <div id="fileInfo"></div>
+        </div>
