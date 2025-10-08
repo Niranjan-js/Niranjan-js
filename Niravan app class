@@ -1,0 +1,54 @@
+package com.niraven.app;
+
+import android.app.Application;
+import android.content.SharedPreferences;
+
+public class NiravenApp extends Application {
+    private static NiravenApp instance;
+    private SharedPreferences sharedPreferences;
+    
+    // Mood data that both sections can access
+    private String currentUserMood = "NEUTRAL";
+    private int moodScore = 0;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
+        sharedPreferences = getSharedPreferences("NiravenPrefs", MODE_PRIVATE);
+    }
+
+    public static NiravenApp getInstance() {
+        return instance;
+    }
+
+    public SharedPreferences getSharedPreferences() {
+        return sharedPreferences;
+    }
+
+    // Mood management for both sections
+    public void setUserMood(String mood, int score) {
+        this.currentUserMood = mood;
+        this.moodScore = score;
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("current_mood", mood);
+        editor.putInt("mood_score", score);
+        editor.apply();
+    }
+
+    public String getCurrentUserMood() {
+        return sharedPreferences.getString("current_mood", "NEUTRAL");
+    }
+
+    public int getMoodScore() {
+        return sharedPreferences.getInt("mood_score", 0);
+    }
+
+    public String getMoodColor() {
+        int score = getMoodScore();
+        if (score >= 3) return "#4CAF50"; // Green
+        else if (score >= 1) return "#FFC107"; // Yellow
+        else if (score >= -2) return "#FF9800"; // Orange
+        else return "#F44336"; // Red
+    }
+}
