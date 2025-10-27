@@ -1,0 +1,12 @@
+# 1. Create React app
+npx create-react-app rozgar-connect
+cd rozgar-connect
+
+# 2. Install dependencies
+npm install react-speech-recognition axios
+
+# 3. Replace the files
+# Copy the above code into respective files
+
+# 4. Start development server
+npm start
