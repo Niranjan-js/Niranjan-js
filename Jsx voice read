@@ -1,0 +1,61 @@
+import React from 'react';
+
+const JobCard = ({ job }) => {
+  const readJobAloud = () => {
+    const jobText = `
+      Job: ${job.title}. 
+      Salary: ${job.salary} rupees. 
+      Location: ${job.location.district}. 
+      Requirements: ${job.requirements.education}. 
+      Contact: ${job.employerPhone}
+    `;
+    
+    const speech = new SpeechSynthesisUtterance();
+    speech.text = jobText;
+    speech.lang = 'hi-IN';
+    speech.rate = 0.8;
+    window.speechSynthesis.speak(speech);
+  };
+
+  const getEducationIcon = (education) => {
+    const icons = {
+      'illiterate': '📝',
+      'student': '🎓',
+      'graduate': '👨‍🎓',
+      'skilled': '🔧'
+    };
+    return icons[education] || '💼';
+  };
+
+  return (
+    <div className="job-card">
+      <div className="job-header">
+        <h3>{job.title}</h3>
+        <span className="salary">₹{job.salary}</span>
+      </div>
+      
+      <div className="job-details">
+        <p>📍 {job.location.district}</p>
+        <p>⏰ {job.jobType.replace('_', ' ')}</p>
+        <p>{getEducationIcon(job.requirements.education)} {job.requirements.education}</p>
+      </div>
+
+      <div className="job-actions">
+        <button onClick={readJobAloud} className="voice-read-btn">
+          🔊 Hear Details
+        </button>
+        <button className="apply-btn">
+          ✅ Apply Now
+        </button>
+      </div>
+
+      {job.urgency === 'emergency' && (
+        <div className="urgent-badge">
+          🚀 Same Day Payment
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default JobCard;
