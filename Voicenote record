@@ -1,0 +1,95 @@
+import React, { useState, useRef } from 'react';
+
+const VoiceRecorder = ({ onRecordingComplete }) => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
+  const timerRef = useRef(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      mediaRecorder.current.ondataavailable = (event) => {
+        audioChunks.current.push(event.data);
+      };
+
+      mediaRecorder.current.onstop = () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Convert to base64 for sending to backend
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result;
+          onRecordingComplete(base64Audio, audioUrl);
+        };
+
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.current.start();
+      setIsRecording(true);
+      
+      // Start timer
+      let seconds = 0;
+      timerRef.current = setInterval(() => {
+        seconds++;
+        setRecordingTime(seconds);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Microphone access is required for voice messages.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+      setRecordingTime(0);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="voice-recorder">
+      {!isRecording ? (
+        <button 
+          onClick={startRecording}
+          className="start-recording-btn"
+          title="Record Voice Message"
+        >
+          🎤 Record Voice
+        </button>
+      ) : (
+        <div className="recording-active">
+          <div className="recording-indicator">
+            <div className="pulse-animation"></div>
+            <span>Recording... {formatTime(recordingTime)}</span>
+          </div>
+          <button 
+            onClick={stopRecording}
+            className="stop-recording-btn"
+          >
+            ⏹️ Stop
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default VoiceRecorder;
