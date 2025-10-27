@@ -1,0 +1,143 @@
+const calculateDistance = (loc1, loc2) => {
+  // Haversine formula for distance calculation
+  const R = 6371; // Earth radius in km
+  const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
+  const dLon = (loc2.lng - loc1.lng) * Math.PI / 180;
+  
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
+  
+  return distance;
+};
+
+const educationLevelMatch = (jobEducation, seekerEducation) => {
+  const educationHierarchy = {
+    'illiterate': 1,
+    'student': 2,
+    'graduate': 3,
+    'skilled': 4
+  };
+  
+  const jobLevel = educationHierarchy[jobEducation] || 1;
+  const seekerLevel = educationHierarchy[seekerEducation] || 1;
+  
+  // Higher education seekers can take lower education jobs
+  return seekerLevel >= jobLevel ? 1 : 0.3;
+};
+
+const skillMatchScore = (jobSkills, seekerSkills) => {
+  if (!jobSkills || jobSkills.length === 0) return 1;
+  
+  const matchingSkills = jobSkills.filter(skill => 
+    seekerSkills.includes(skill)
+  );
+  
+  return matchingSkills.length / jobSkills.length;
+};
+
+const calculateLocationScore = (jobLocation, seekerLocation, maxDistance = 50) => {
+  const distance = calculateDistance(jobLocation, seekerLocation);
+  
+  if (distance <= 5) return 1;    // Within 5km - perfect
+  if (distance <= 15) return 0.8; // Within 15km - good
+  if (distance <= 30) return 0.5; // Within 30km - average
+  if (distance <= 50) return 0.2; // Within 50km - poor
+  
+  return 0; // Too far
+};
+
+// MAIN AI MATCHING FUNCTION
+const calculateJobSeekerMatch = (job, seeker) => {
+  let totalScore = 0;
+  
+  // 1. Location Matching (40% weight)
+  const locationScore = calculateLocationScore(job.location.coordinates, seeker.location.coordinates);
+  totalScore += locationScore * 40;
+  
+  // 2. Skill Matching (30% weight)
+  const skillScore = skillMatchScore(job.requirements.skills, seeker.skills);
+  totalScore += skillScore * 30;
+  
+  // 3. Education Matching (20% weight)
+  const educationScore = educationLevelMatch(job.requirements.education, seeker.educationLevel);
+  totalScore += educationScore * 20;
+  
+  // 4. Rating/Reputation (10% weight)
+  const ratingScore = (seeker.rating || 3) / 5;
+  totalScore += ratingScore * 10;
+  
+  // 5. Urgency Bonus (Extra 5% for urgent jobs)
+  if (job.urgency === 'urgent') totalScore += 5;
+  if (job.urgency === 'emergency') totalScore += 10;
+  
+  return Math.min(100, Math.round(totalScore));
+};
+
+// Find best jobs for a seeker
+const findMatchingJobsForSeeker = async (seeker, allJobs, limit = 10) => {
+  const scoredJobs = allJobs.map(job => ({
+    job,
+    matchScore: calculateJobSeekerMatch(job, seeker)
+  }));
+  
+  // Filter out poor matches (< 30%) and sort by best match
+  const goodMatches = scoredJobs
+    .filter(item => item.matchScore >= 30)
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, limit);
+  
+  return goodMatches;
+};
+
+// Find best seekers for a job
+const findMatchingSeekersForJob = async (job, allSeekers, limit = 20) => {
+  const scoredSeekers = allSeekers.map(seeker => ({
+    seeker,
+    matchScore: calculateJobSeekerMatch(job, seeker)
+  }));
+  
+  // Filter and sort seekers
+  const goodMatches = scoredSeekers
+    .filter(item => item.matchScore >= 40)
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, limit);
+  
+  return goodMatches;
+};
+
+// Real-time matching when new job is posted
+const triggerRealTimeMatching = async (newJob, allSeekers) => {
+  const matches = await findMatchingSeekersForJob(newJob, allSeekers, 10);
+  
+  matches.forEach(async ({ seeker, matchScore }) => {
+    if (matchScore > 70) {
+      // Send immediate notification
+      await sendJobNotification(seeker, newJob, matchScore);
+    }
+  });
+  
+  return matches;
+};
+
+const sendJobNotification = async (seeker, job, matchScore) => {
+  // Implement SMS/email/push notification
+  const message = {
+    to: seeker.phone,
+    body: `🚀 New job match! ${job.title} - ${matchScore}% match. Salary: ₹${job.salary}. Reply YES to apply.`
+  };
+  
+  // Integrate with your notification service
+  console.log('Sending notification:', message);
+};
+
+module.exports = {
+  calculateJobSeekerMatch,
+  findMatchingJobsForSeeker,
+  findMatchingSeekersForJob,
+  triggerRealTimeMatching
+};
