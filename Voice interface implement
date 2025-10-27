@@ -1,0 +1,131 @@
+import React, { useState, useEffect } from 'react';
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+
+const VoiceSearch = ({ onVoiceResult }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [language, setLanguage] = useState('hi-IN'); // Hindi default
+  
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
+
+  // Voice commands mapping
+  const voiceCommands = {
+    'catering': 'catering',
+    'tech': 'technology',
+    'driver': 'driver',
+    'teaching': 'teaching',
+    'part time': 'part_time',
+    'full time': 'full_time',
+    'delivery': 'delivery',
+    'mobile repair': 'mobile_repair',
+    'data entry': 'data_entry',
+    'cleaner': 'cleaner',
+    'security': 'security'
+  };
+
+  useEffect(() => {
+    if (transcript) {
+      processVoiceCommand(transcript);
+    }
+  }, [transcript]);
+
+  const startListening = () => {
+    setIsListening(true);
+    resetTranscript();
+    SpeechRecognition.startListening({ 
+      continuous: true, 
+      language: language 
+    });
+  };
+
+  const stopListening = () => {
+    setIsListening(false);
+    SpeechRecognition.stopListening();
+  };
+
+  const processVoiceCommand = (command) => {
+    const lowerCommand = command.toLowerCase();
+    
+    // Find best matching category
+    let bestMatch = '';
+    let bestScore = 0;
+
+    Object.keys(voiceCommands).forEach(key => {
+      if (lowerCommand.includes(key)) {
+        const score = key.length;
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = voiceCommands[key];
+        }
+      }
+    });
+
+    if (bestMatch) {
+      onVoiceResult(bestMatch);
+      stopListening();
+    }
+  };
+
+  const readTextAloud = (text) => {
+    const speech = new SpeechSynthesisUtterance();
+    speech.text = text;
+    speech.lang = language;
+    speech.rate = 0.8;
+    window.speechSynthesis.speak(speech);
+  };
+
+  if (!browserSupportsSpeechRecognition) {
+    return (
+      <div className="voice-search-fallback">
+        <button onClick={() => readTextAloud('Voice not supported. Please type your search.')}>
+          🎤 Voice Not Supported
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="voice-search">
+      <div className="voice-controls">
+        <button
+          onClick={isListening ? stopListening : startListening}
+          className={`voice-btn ${isListening ? 'listening' : ''}`}
+        >
+          {isListening ? '🔴 Stop Listening' : '🎤 Search by Voice'}
+        </button>
+        
+        <select 
+          value={language} 
+          onChange={(e) => setLanguage(e.target.value)}
+          className="language-select"
+        >
+          <option value="hi-IN">हिन्दी (Hindi)</option>
+          <option value="en-IN">English</option>
+          <option value="ta-IN">தமிழ் (Tamil)</option>
+          <option value="te-IN">తెలుగు (Telugu)</option>
+        </select>
+      </div>
+
+      {isListening && (
+        <div className="voice-feedback">
+          <div className="listening-animation"></div>
+          <p>Speak now... I'm listening for: {Object.keys(voiceCommands).join(', ')}</p>
+          {transcript && <p className="transcript">You said: "{transcript}"</p>}
+        </div>
+      )}
+
+      <button 
+        onClick={() => readTextAloud('Welcome to Rozgar Connect. Use voice search to find jobs easily.')}
+        className="help-btn"
+      >
+        🔊 Hear Help
+      </button>
+    </div>
+  );
+};
+
+export default VoiceSearch;
