@@ -1,0 +1,147 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const mongoose = require('mongoose');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('uploads'));
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/rozgar-connect', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/jobs', require('./routes/jobs'));
+app.use('/api/chats', require('./routes/chats'));
+app.use('/api/users', require('./routes/users'));
+
+// Socket.io for Real-time Chat
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Join chat room
+  socket.on('join_chat', (chatId) => {
+    socket.join(chatId);
+    console.log(`User ${socket.id} joined chat ${chatId}`);
+  });
+
+  // Handle new message
+  socket.on('send_message', async (data) => {
+    try {
+      // Save message to database
+      const chat = await Chat.findById(data.chatId);
+      chat.messages.push({
+        sender: data.sender,
+        text: data.text,
+        voiceNote: data.voiceNote,
+        file: data.file,
+        timestamp: new Date()
+      });
+      await chat.save();
+
+      // Broadcast to all in chat room
+      io.to(data.chatId).emit('receive_message', {
+        ...data,
+        timestamp: new Date()
+      });
+
+      // Send push notification
+      await sendPushNotification(data.chatId, data.sender, data.text);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  });
+
+  // Handle voice note
+  socket.on('send_voice_note', async (data) => {
+    try {
+      const chat = await Chat.findById(data.chatId);
+      chat.messages.push({
+        sender: data.sender,
+        voiceNote: data.audioUrl,
+        timestamp: new Date()
+      });
+      await chat.save();
+
+      io.to(data.chatId).emit('receive_voice_note', {
+        sender: data.sender,
+        voiceNote: data.audioUrl,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Error sending voice note:', error);
+    }
+  });
+
+  // Handle file sharing
+  socket.on('send_file', async (data) => {
+    try {
+      const chat = await Chat.findById(data.chatId);
+      chat.messages.push({
+        sender: data.sender,
+        file: data.fileUrl,
+        fileName: data.fileName,
+        timestamp: new Date()
+      });
+      await chat.save();
+
+      io.to(data.chatId).emit('receive_file', {
+        sender: data.sender,
+        file: data.fileUrl,
+        fileName: data.fileName,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Error sending file:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// AI Job Matching Cron Job
+const cron = require('node-cron');
+const { triggerRealTimeMatching } = require('./utils/aiMatcher');
+
+// Run every 10 minutes to match new jobs with seekers
+cron.schedule('*/10 * * * *', async () => {
+  console.log('Running AI job matching...');
+  try {
+    const newJobs = await Job.find({ 
+      status: 'active', 
+      createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) }
+    });
+    
+    for (const job of newJobs) {
+      const seekers = await User.find({ userType: 'job_seeker' });
+      await triggerRealTimeMatching(job, seekers);
+    }
+  } catch (error) {
+    console.error('Cron job error:', error);
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📱 Real-time chat enabled`);
+  console.log(`🧠 AI Matching active`);
+});
