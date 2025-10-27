@@ -1,0 +1,215 @@
+import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
+import VoiceRecorder from './VoiceRecorder';
+
+const ChatInterface = ({ chatId, currentUser, userType }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  // Connect to Socket.io
+  useEffect(() => {
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      newSocket.emit('join_chat', chatId);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    // Listen for new messages
+    newSocket.on('receive_message', (message) => {
+      setMessages(prev => [...prev, message]);
+    });
+
+    newSocket.on('receive_voice_note', (voiceNote) => {
+      setMessages(prev => [...prev, { ...voiceNote, type: 'voice' }]);
+    });
+
+    newSocket.on('receive_file', (file) => {
+      setMessages(prev => [...prev, { ...file, type: 'file' }]);
+    });
+
+    return () => newSocket.close();
+  }, [chatId]);
+
+  // Load existing messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/chats/${chatId}`);
+        const chat = await response.json();
+        setMessages(chat.messages || []);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+
+    fetchMessages();
+  }, [chatId]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !socket) return;
+
+    const messageData = {
+      chatId,
+      sender: userType, // 'employer' or 'seeker'
+      text: newMessage,
+      timestamp: new Date()
+    };
+
+    socket.emit('send_message', messageData);
+    setNewMessage('');
+  };
+
+  const handleVoiceNote = (base64Audio, audioUrl) => {
+    if (!socket) return;
+
+    socket.emit('send_voice_note', {
+      chatId,
+      sender: userType,
+      audioUrl,
+      audioData: base64Audio
+    });
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file || !socket) return;
+
+    // Create file URL and send
+    const fileUrl = URL.createObjectURL(file);
+    const reader = new FileReader();
+    
+    reader.onloadend = () => {
+      socket.emit('send_file', {
+        chatId,
+        sender: userType,
+        fileUrl: reader.result,
+        fileName: file.name
+      });
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
+  const playVoiceNote = (audioUrl) => {
+    const audio = new Audio(audioUrl);
+    audio.play();
+  };
+
+  const downloadFile = (fileUrl, fileName) => {
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName;
+    link.click();
+  };
+
+  return (
+    <div className="chat-interface">
+      <div className="chat-header">
+        <h3>Chat</h3>
+        <div className="connection-status">
+          {isConnected ? '🟢 Online' : '🔴 Offline'}
+        </div>
+      </div>
+
+      <div className="messages-container">
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`message ${message.sender === userType ? 'own-message' : 'other-message'}`}
+          >
+            {message.text && (
+              <div className="text-message">
+                {message.text}
+              </div>
+            )}
+
+            {message.voiceNote && (
+              <div className="voice-message">
+                <button 
+                  onClick={() => playVoiceNote(message.voiceNote)}
+                  className="play-voice-btn"
+                >
+                  🔊 Play Voice Note
+                </button>
+                <span className="message-time">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            )}
+
+            {message.file && (
+              <div className="file-message">
+                <div className="file-info">
+                  📎 {message.fileName}
+                </div>
+                <button 
+                  onClick={() => downloadFile(message.file, message.fileName)}
+                  className="download-file-btn"
+                >
+                  Download
+                </button>
+                <span className="message-time">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            )}
+
+            {!message.voiceNote && !message.file && (
+              <span className="message-time">
+                {new Date(message.timestamp).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form onSubmit={sendMessage} className="message-input-form">
+        <div className="input-group">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="message-input"
+          />
+          
+          <div className="chat-buttons">
+            <VoiceRecorder onRecordingComplete={handleVoiceNote} />
+            
+            <label htmlFor="file-upload" className="file-upload-btn">
+              📎 File
+            </label>
+            <input
+              id="file-upload"
+              type="file"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+
+            <button type="submit" className="send-btn">
+              📤 Send
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default ChatInterface;
