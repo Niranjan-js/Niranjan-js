@@ -1,0 +1,61 @@
+const mongoose = require('mongoose');
+
+const messageSchema = new mongoose.Schema({
+  sender: {
+    type: String,
+    required: true,
+    enum: ['employer', 'seeker']
+  },
+  text: String,
+  voiceNote: String, // URL to audio file
+  file: String, // URL to shared file
+  fileName: String,
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  read: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const chatSchema = new mongoose.Schema({
+  jobId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Job',
+    required: true
+  },
+  employerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  seekerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  messages: [messageSchema],
+  status: {
+    type: String,
+    enum: ['interested', 'interview_scheduled', 'hired', 'rejected', 'completed'],
+    default: 'interested'
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true
+});
+
+// Update lastActive when new message is added
+chatSchema.pre('save', function(next) {
+  if (this.isModified('messages')) {
+    this.lastActive = new Date();
+  }
+  next();
+});
+
+module.exports = mongoose.model('Chat', chatSchema);
