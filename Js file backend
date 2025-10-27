@@ -1,0 +1,101 @@
+const express = require('express');
+const router = express.Router();
+const Chat = require('../models/Chat');
+const auth = require('../middleware/auth');
+
+// Get all chats for a user
+router.get('/my-chats', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userType = req.user.userType;
+
+    let chats;
+    if (userType === 'employer') {
+      chats = await Chat.find({ employerId: userId })
+        .populate('jobId', 'title salary')
+        .populate('seekerId', 'name phone skills rating')
+        .sort({ lastActive: -1 });
+    } else {
+      chats = await Chat.find({ seekerId: userId })
+        .populate('jobId', 'title salary employerId')
+        .populate('employerId', 'name phone businessName rating')
+        .sort({ lastActive: -1 });
+    }
+
+    res.json(chats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific chat
+router.get('/:chatId', auth, async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId)
+      .populate('jobId')
+      .populate('employerId')
+      .populate('seekerId');
+
+    if (!chat) {
+      return res.status(404).json({ error: 'Chat not found' });
+    }
+
+    // Check if user has access to this chat
+    if (![chat.employerId._id.toString(), chat.seekerId._id.toString()].includes(req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json(chat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start new chat
+router.post('/start', auth, async (req, res) => {
+  try {
+    const { jobId, seekerId, initialMessage } = req.body;
+
+    // Check if chat already exists
+    const existingChat = await Chat.findOne({ jobId, seekerId });
+    if (existingChat) {
+      return res.json(existingChat);
+    }
+
+    const chat = new Chat({
+      jobId,
+      employerId: req.user.id, // Assuming employer is starting chat
+      seekerId,
+      messages: [{
+        sender: 'employer',
+        text: initialMessage || 'Hello, I saw your profile and would like to discuss the job opportunity.',
+        timestamp: new Date()
+      }]
+    });
+
+    await chat.save();
+    await chat.populate('jobId seekerId employerId');
+
+    res.status(201).json(chat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update chat status
+router.put('/:chatId/status', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const chat = await Chat.findByIdAndUpdate(
+      req.params.chatId,
+      { status },
+      { new: true }
+    ).populate('jobId employerId seekerId');
+
+    res.json(chat);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
