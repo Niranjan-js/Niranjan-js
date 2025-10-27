@@ -1,0 +1,166 @@
+import React, { useState, useEffect } from 'react';
+import VoiceSearch from './components/VoiceSearch';
+import JobCard from './components/JobCard';
+import './App.css';
+
+function App() {
+  const [jobs, setJobs] = useState([]);
+  const [filteredJobs, setFilteredJobs] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Sample jobs data - replace with API call
+  const sampleJobs = [
+    {
+      id: 1,
+      title: "Catering Helper for Wedding",
+      salary: 800,
+      category: "catering",
+      location: {
+        district: "Tirupattur",
+        coordinates: { lat: 12.75, lng: 78.75 }
+      },
+      jobType: "part_time",
+      urgency: "normal",
+      requirements: {
+        education: "illiterate",
+        skills: ["serving", "cleaning"]
+      },
+      employerPhone: "9876543210"
+    },
+    {
+      id: 2,
+      title: "Mobile Repair Assistant",
+      salary: 12000,
+      category: "mobile_repair", 
+      location: {
+        district: "Vellore",
+        coordinates: { lat: 12.92, lng: 79.13 }
+      },
+      jobType: "full_time",
+      urgency: "urgent",
+      requirements: {
+        education: "student",
+        skills: ["android", "hardware"]
+      },
+      employerPhone: "9876543211"
+    },
+    {
+      id: 3,
+      title: "Emergency Delivery Boy",
+      salary: 500,
+      category: "delivery",
+      location: {
+        district: "Tirupattur", 
+        coordinates: { lat: 12.74, lng: 78.76 }
+      },
+      jobType: "gig",
+      urgency: "emergency",
+      requirements: {
+        education: "illiterate",
+        skills: ["cycling", "local knowledge"]
+      },
+      employerPhone: "9876543212"
+    }
+  ];
+
+  useEffect(() => {
+    setJobs(sampleJobs);
+    setFilteredJobs(sampleJobs);
+    detectUserLocation();
+  }, []);
+
+  const detectUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.log("Location access denied");
+          // Default to Tirupattur
+          setUserLocation({ lat: 12.75, lng: 78.75 });
+        }
+      );
+    }
+  };
+
+  const handleVoiceResult = (category) => {
+    setSelectedCategory(category);
+    if (category === 'all') {
+      setFilteredJobs(jobs);
+    } else {
+      const filtered = jobs.filter(job => job.category === category);
+      setFilteredJobs(filtered);
+    }
+  };
+
+  const categories = [
+    { id: 'all', name: 'All Jobs', icon: '💼' },
+    { id: 'catering', name: 'Catering', icon: '🍽️' },
+    { id: 'technology', name: 'Tech Jobs', icon: '💻' },
+    { id: 'delivery', name: 'Delivery', icon: '🚚' },
+    { id: 'teaching', name: 'Teaching', icon: '👨‍🏫' },
+    { id: 'driver', name: 'Driver', icon: '🚗' },
+    { id: 'mobile_repair', name: 'Mobile Repair', icon: '📱' }
+  ];
+
+  return (
+    <div className="App">
+      <header className="app-header">
+        <h1>🧑‍🌾 Rozgar Connect</h1>
+        <p>Find your perfect job with Voice AI</p>
+      </header>
+
+      <div className="voice-section">
+        <VoiceSearch onVoiceResult={handleVoiceResult} />
+      </div>
+
+      <div className="categories">
+        {categories.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => handleVoiceResult(cat.id)}
+            className={`category-btn ${selectedCategory === cat.id ? 'active' : ''}`}
+          >
+            <span className="icon">{cat.icon}</span>
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="jobs-section">
+        <h2>
+          {selectedCategory === 'all' 
+            ? 'All Jobs' 
+            : categories.find(c => c.id === selectedCategory)?.name
+          } 
+          ({filteredJobs.length})
+        </h2>
+        
+        <div className="jobs-grid">
+          {filteredJobs.map(job => (
+            <JobCard key={job.id} job={job} />
+          ))}
+        </div>
+
+        {filteredJobs.length === 0 && (
+          <div className="no-jobs">
+            <p>No jobs found in this category.</p>
+            <p>Try using voice search or select another category.</p>
+          </div>
+        )}
+      </div>
+
+      <footer className="app-footer">
+        <p>🚀 Built with AI Voice Technology • 📍 Auto Location Detection</p>
+        <p>💬 Real-time Chat • 💰 Instant Payments</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
