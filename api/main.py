@@ -4,7 +4,7 @@ import os
 # Add the project root to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -67,7 +67,16 @@ class LogRequest(BaseModel):
 @app.post("/analyze/logs")
 async def analyze_logs(request: LogRequest):
     raw_logs_text = "\n".join(request.logs)
+    return await _process_logs(raw_logs_text, request.source)
 
+# ===== Upload/Analyze Real File Endpoint =====
+@app.post("/analyze/upload")
+async def analyze_upload(file: UploadFile = File(...)):
+    content = await file.read()
+    raw_logs_text = content.decode("utf-8")
+    return await _process_logs(raw_logs_text, f"Uploaded File: {file.filename}")
+
+async def _process_logs(raw_logs_text: str, source: str):
     findings = await log_agent.analyze(raw_logs_text)
     correlated = correlation_agent.correlate(findings)
     decisions = await llm_agent.reason(correlated)
@@ -75,13 +84,14 @@ async def analyze_logs(request: LogRequest):
     results = {
         "raw_findings": [str(f) for f in findings],
         "correlated_attacks": correlated,
-        "llm_decisions": decisions
+        "llm_decisions": decisions,
+        "source": source
     }
 
     # Automatically update dashboard state
     from api.dashboard import state
     state.update(results)
-    print(f"DEBUG: Updated dashboard state directly from analyze_logs")
+    print(f"DEBUG: Updated dashboard state from {source}")
 
     return results
 

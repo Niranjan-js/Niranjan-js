@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CyberGuard AI | Next-Gen Threat Intel</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -26,9 +27,13 @@
                 </ul>
             </nav>
             <div style="margin-top: auto;">
-                <p style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security Pulse</p>
+                <p
+                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+                    Security Pulse: <span id="pulseValue">85%</span></p>
                 <div style="height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-                    <div style="width: 85%; height: 100%; background: var(--success); border-radius: 10px; box-shadow: 0 0 10px var(--success);"></div>
+                    <div id="pulseBar"
+                        style="width: 85%; height: 100%; background: var(--success); border-radius: 10px; box-shadow: 0 0 10px var(--success);">
+                    </div>
                 </div>
             </div>
         </aside>
@@ -39,8 +44,12 @@
                     <h2>Operation Center</h2>
                     <p><span class="pulse-dot"></span> All neural agents operational and monitoring</p>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <button id="refreshBtn" class="neon-btn" style="padding: 10px 20px; font-size: 12px;">Sync Data</button>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <div id="connectionStatus" class="status-badge">
+                        <span class="status-dot online"></span> SYSTEM ONLINE
+                    </div>
+                    <button id="refreshBtn" class="neon-btn" style="padding: 10px 20px; font-size: 12px;">Sync
+                        Data</button>
                 </div>
             </header>
 
@@ -82,13 +91,36 @@
                 <div class="glass-card">
                     <h4>AI Decision Protocol</h4>
                     <div id="aiDecisions" class="decision-feed">
-                        <p style="color: var(--text-secondary); text-align: center; margin-top: 50px;">Awaiting live stream ingestion...</p>
+                        <p style="color: var(--text-secondary); text-align: center; margin-top: 50px;">Awaiting live
+                            stream ingestion...</p>
                     </div>
                 </div>
                 <div class="glass-card simulation-box">
-                    <h4>Manual Injection</h4>
-                    <textarea id="logInput" placeholder="Enter raw server logs for real-time analysis..."></textarea>
-                    <button id="analyzeBtn" class="neon-btn">Execute Analysis</button>
+                    <div class="box-header">
+                        <h4>Security Feed Injection</h4>
+                        <div class="tabs">
+                            <button id="textTab" class="tab-btn active">Raw Logs</button>
+                            <button id="fileTab" class="tab-btn">File Upload</button>
+                        </div>
+                    </div>
+
+                    <div id="textInputArea">
+                        <textarea id="logInput"
+                            placeholder="Enter raw server logs for real-time analysis..."></textarea>
+                        <button id="analyzeBtn" class="neon-btn">Execute Analysis</button>
+                    </div>
+
+                    <div id="fileUploadArea" style="display: none;">
+                        <div class="upload-zone" id="dropZone">
+                            <p>Drag & drop log files or</p>
+                            <input type="file" id="logFile" hidden>
+                            <button class="neon-btn" onclick="document.getElementById('logFile').click()">Browse
+                                Files</button>
+                        </div>
+                        <div id="fileInfo" style="margin-top:10px; font-size:12px; color:var(--text-secondary);"></div>
+                        <button id="uploadBtn" class="neon-btn" style="margin-top:15px; width:100%;">Analyze
+                            File</button>
+                    </div>
                 </div>
             </section>
         </main>

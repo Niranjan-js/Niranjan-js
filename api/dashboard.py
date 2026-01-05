@@ -10,7 +10,8 @@ class DashboardState:
         self.results = {
             "raw_findings": [],
             "correlated_attacks": [],
-            "llm_decisions": []
+            "llm_decisions": [],
+            "remediated_ids": []
         }
         self.history = []
         self.max_history = 50
@@ -51,13 +52,20 @@ async def dashboard_summary():
         type_counter[attack.get("attack", "OTHER")] += 1
 
     total = len(correlated)
+    remediated_count = len(state.results.get("remediated_ids", []))
     critical = severity_counter.get("CRITICAL", 0) + severity_counter.get("HIGH", 0)
     
+    # Simple Security Pulse calculation (1-100)
+    # Starts at 100, drops by 5 for high, 10 for critical, up to 10 for regular threats
+    pulse = max(10, 100 - (critical * 15) - (total * 2) + (remediated_count * 5))
+    pulse = min(100, pulse)
+
     return {
         "total_threats": total,
-        "active": total,
-        "remediated": 0,
+        "active": total - remediated_count,
+        "remediated": remediated_count,
         "critical": critical,
+        "pulse": int(pulse),
         "by_severity": dict(severity_counter),
         "by_type": dict(type_counter),
         "decisions": decisions,
@@ -71,3 +79,14 @@ async def update_results(analysis_result: Dict[str, Any]):
     """
     state.update(analysis_result)
     return {"status": "updated"}
+
+@router.post("/dashboard/remediate")
+async def remediate_threat(request: Dict[str, str]):
+    """
+    Mark a threat as remediated
+    """
+    threat_id = request.get("threat_id")
+    if threat_id and threat_id not in state.results["remediated_ids"]:
+        state.results["remediated_ids"].append(threat_id)
+        return {"status": "success", "message": f"Threat {threat_id} remediated"}
+    return {"status": "error", "message": "Invalid threat ID or already remediated"}

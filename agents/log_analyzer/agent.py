@@ -65,4 +65,49 @@ class LogAnalysisAgent(BaseAgent):
                     source_ip=ip
                 ))
 
+            # Check for Path Traversal
+            if any(p in line.lower() for p in ["../", "/etc/passwd", "/windows/system32", "boot.ini"]):
+                findings.append(ThreatFinding(
+                    threat_type="PATH_TRAVERSAL",
+                    description="Attempt to access sensitive files via path traversal",
+                    severity="HIGH",
+                    source_ip=ip
+                ))
+
+            # Check for Command Injection
+            if any(p in line.lower() for p in ["; cat ", "; ls ", "&& id", "|| whoami", "curl http", "wget http"]):
+                findings.append(ThreatFinding(
+                    threat_type="COMMAND_INJECTION",
+                    description="Potential OS command injection attempt",
+                    severity="CRITICAL",
+                    source_ip=ip
+                ))
+
+            # Check for Data Exfiltration patterns (large outbound data or suspicious tools)
+            if any(p in line.lower() for p in ["base64", "openssl enc", "transfer.sh", "pastebin.com"]) or ("sent" in line.lower() and "mb" in line.lower()):
+                findings.append(ThreatFinding(
+                    threat_type="DATA_EXFILTRATION",
+                    description="Suspicious data transfer or encoding pattern",
+                    severity="HIGH",
+                    source_ip=ip
+                ))
+
+            # Check for suspicious User Agents
+            if any(p in line.lower() for p in ["sqlmap", "nikto", "dirbuster", "gobuster", "metasploit"]):
+                findings.append(ThreatFinding(
+                    threat_type="RECON_TOOL",
+                    description=f"Automated security scanner detected: {line.strip()}",
+                    severity="MEDIUM",
+                    source_ip=ip
+                ))
+
+            # Check for SSH/FTP Brute Force
+            if "ssh" in line.lower() and "failed" in line.lower() or "ftp" in line.lower() and "530" in line.lower():
+                findings.append(ThreatFinding(
+                    threat_type="BRUTE_FORCE",
+                    description="Service-specific authentication failure (SSH/FTP)",
+                    severity="HIGH",
+                    source_ip=ip
+                ))
+
         return findings

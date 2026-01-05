@@ -14,7 +14,11 @@ LOG_SAMPLES = [
     '{timestamp} [SYSTEM] Service sshd restarted by user root'
 ]
 
-API_URL = "http://127.0.0.1:8000/analyze/logs"
+import os
+
+# Use environment variable PORT or default to 8000
+PORT = os.getenv("PORT", "8000")
+API_URL = f"http://127.0.0.1:{PORT}/analyze/logs"
 
 # Global control for automation
 is_automation_on = True
