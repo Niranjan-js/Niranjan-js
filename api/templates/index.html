@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberGuard AI | Next-Gen Threat Intel</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>CyberGuard AI</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li class="active">📊 Overview</li>
+                    <li>🛡️ Threat Matrix</li>
+                    <li>🌐 Network Map</li>
+                    <li>⚙️ System Config</li>
+                </ul>
+            </nav>
+            <div style="margin-top: auto;">
+                <p style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security Pulse</p>
+                <div style="height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                    <div style="width: 85%; height: 100%; background: var(--success); border-radius: 10px; box-shadow: 0 0 10px var(--success);"></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <div class="header-info">
+                    <h2>Operation Center</h2>
+                    <p><span class="pulse-dot"></span> All neural agents operational and monitoring</p>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <button id="refreshBtn" class="neon-btn" style="padding: 10px 20px; font-size: 12px;">Sync Data</button>
+                </div>
+            </header>
+
+            <section class="stats-grid">
+                <div class="glass-card stat-card">
+                    <p>Total Events</p>
+                    <h3 id="total">0</h3>
+                </div>
+                <div class="glass-card stat-card">
+                    <p>Processed</p>
+                    <h3 id="rawCount">0</h3>
+                </div>
+                <div class="glass-card stat-card">
+                    <p>Remediated</p>
+                    <h3 id="remediated">0</h3>
+                </div>
+                <div class="glass-card stat-card critical">
+                    <p>Critical Threats</p>
+                    <h3 id="critical">0</h3>
+                </div>
+            </section>
+
+            <section class="charts-grid">
+                <div class="glass-card chart-box">
+                    <h4>Threat Severity</h4>
+                    <div class="canvas-container">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+                <div class="glass-card chart-box">
+                    <h4>Attack Vectors</h4>
+                    <div class="canvas-container">
+                        <canvas id="vectorChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bottom-grid">
+                <div class="glass-card">
+                    <h4>AI Decision Protocol</h4>
+                    <div id="aiDecisions" class="decision-feed">
+                        <p style="color: var(--text-secondary); text-align: center; margin-top: 50px;">Awaiting live stream ingestion...</p>
+                    </div>
+                </div>
+                <div class="glass-card simulation-box">
+                    <h4>Manual Injection</h4>
+                    <textarea id="logInput" placeholder="Enter raw server logs for real-time analysis..."></textarea>
+                    <button id="analyzeBtn" class="neon-btn">Execute Analysis</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+
+</html>
