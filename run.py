@@ -22,12 +22,16 @@ BANNER = """
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CyberGuard AI Runner")
     parser.add_argument("--host", default="0.0.0.0", help="Host address (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8000, help="Port number (default: 8000)")
+    parser.add_argument("--port", type=int, default=8081, help="Port number (default: 8081)")
     args = parser.parse_args()
 
     print(BANNER)
     print(f"[*] Initializing Neural Defense Agents...")
     print(f"[*] Dashboard Access: http://{args.host}:{args.port}/dashboard")
+    
+    # Set PORT environment variable so api.auto_logs can pick it up
+    os.environ["PORT"] = str(args.port)
+    
     print(f"[*] Press Ctrl+C to stop the system\n")
 
     try:

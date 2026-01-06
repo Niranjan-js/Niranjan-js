@@ -16,8 +16,8 @@ LOG_SAMPLES = [
 
 import os
 
-# Use environment variable PORT or default to 8000
-PORT = os.getenv("PORT", "8000")
+# Use environment variable PORT or default to 8081
+PORT = os.getenv("PORT", "8081")
 API_URL = f"http://127.0.0.1:{PORT}/analyze/logs"
 
 # Global control for automation
