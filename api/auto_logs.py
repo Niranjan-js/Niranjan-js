@@ -11,7 +11,12 @@ LOG_SAMPLES = [
     '{timestamp} [IDS] Potential Brute Force: 10 failed logins in 5s from {ip}',
     '{timestamp} [WAF] XSS Attempt: "<script>alert(1)</script>" blocked from {ip}',
     '{timestamp} [FIREWALL] Port scan detected from {ip}: 50 ports probed in 2s',
-    '{timestamp} [SYSTEM] Service sshd restarted by user root'
+    '{timestamp} [SYSTEM] Service sshd restarted by user root',
+    '{timestamp} [DATA] Sensitive file access: /etc/shadow by unauthorized user from {ip}',
+    '{timestamp} [NETWORK] Large outbound data transfer detected (1.2GB) to {ip}',
+    '{timestamp} [WAF] Path Traversal Attempt: ../../../etc/passwd from {ip}',
+    '{timestamp} [IDS] Tor Exit Node connection detected from {ip}',
+    '{timestamp} [SYSCALL] Unexpected process execution: /tmp/reverse_shell from {ip}'
 ]
 
 import os

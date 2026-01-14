@@ -11,21 +11,68 @@ class DashboardState:
             "raw_findings": [],
             "correlated_attacks": [],
             "llm_decisions": [],
-            "remediated_ids": []
+            "remediated_ids": [],
+            "mitre_tactics": {
+                "Initial Access": 0,
+                "Execution": 0,
+                "Persistence": 0,
+                "Privilege Escalation": 0,
+                "Defense Evasion": 0,
+                "Credential Access": 0,
+                "Discovery": 0,
+                "Lateral Movement": 0,
+                "Collection": 0,
+                "Exfiltration": 0,
+                "Command and Control": 0
+            },
+            "history_stats": {
+                "times": [],
+                "threat_counts": [],
+                "remediation_counts": []
+            },
+            "entity_counts": {
+                "Resources": 681,
+                "Identities": 100,
+                "Machine": 150,
+                "Roles": 280
+            }
         }
         self.history = []
-        self.max_history = 50
+        self.max_history = 100
 
     def update(self, new_results: Dict[str, Any]):
         # Aggregate findings
         self.results["raw_findings"].extend(new_results.get("raw_findings", []))
-        self.results["correlated_attacks"].extend(new_results.get("correlated_attacks", []))
+        correlated = new_results.get("correlated_attacks", [])
+        self.results["correlated_attacks"].extend(correlated)
         self.results["llm_decisions"].extend(new_results.get("llm_decisions", []))
 
-        # Keep only latest for summary metrics if needed, but here we aggregate
-        # Let's keep a sliding window for the last 100 raw findings to avoid bloat
-        if len(self.results["raw_findings"]) > 100:
-            self.results["raw_findings"] = self.results["raw_findings"][-100:]
+        # Update MITRE tactics based on attack types
+        for attack in correlated:
+            name = attack.get("attack", "")
+            if "BRUTE_FORCE" in name or "CREDENTIAL" in name:
+                self.results["mitre_tactics"]["Credential Access"] += 1
+            elif "INJECTION" in name or "XSS" in name:
+                self.results["mitre_tactics"]["Execution"] += 1
+            elif "RECON" in name or "SCAN" in name:
+                self.results["mitre_tactics"]["Discovery"] += 1
+            elif "EXFIL" in name:
+                self.results["mitre_tactics"]["Exfiltration"] += 1
+
+        # Update history for trend charts
+        import datetime
+        now = datetime.datetime.now().strftime("%H:%M")
+        self.results["history_stats"]["times"].append(now)
+        self.results["history_stats"]["threat_counts"].append(len(self.results["correlated_attacks"]))
+        self.results["history_stats"]["remediation_counts"].append(len(self.results["remediated_ids"]))
+
+        # Limit history
+        if len(self.results["history_stats"]["times"]) > 20:
+            for k in self.results["history_stats"]:
+                self.results["history_stats"][k] = self.results["history_stats"][k][-20:]
+
+        if len(self.results["raw_findings"]) > 500:
+            self.results["raw_findings"] = self.results["raw_findings"][-500:]
         
         # Add to history
         self.history.append(new_results)
@@ -69,7 +116,10 @@ async def dashboard_summary():
         "by_severity": dict(severity_counter),
         "by_type": dict(type_counter),
         "decisions": decisions,
-        "raw_count": len(raw_findings)
+        "raw_count": len(raw_findings),
+        "mitre_tactics": state.results["mitre_tactics"],
+        "history": state.results["history_stats"],
+        "entities": state.results["entity_counts"]
     }
 
 @router.post("/dashboard/update-results")
