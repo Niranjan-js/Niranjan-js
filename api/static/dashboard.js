@@ -6,6 +6,12 @@ let reconnectAttempts = 0;
 let maxReconnectAttempts = 5;
 let threatMarkers = [];
 
+// 3D Charts for Overview
+let pieChartScene, pieChartCamera, pieChartRenderer;
+let barChartScene, barChartCamera, barChartRenderer;
+let pieSlices = [];
+let barChartBars = [];
+
 const COLORS = {
     CRITICAL: '#ef4444',
     HIGH: '#f59e0b',
@@ -42,7 +48,7 @@ function initNavigation() {
     });
 }
 
-// --- 3D Network Map (Three.js) ---
+// --- Simple 3D Network Map (Original Design) ---
 function init3DMap() {
     const container = document.getElementById('threeJsContainer');
     if (!container || container.children.length > 0) return;
@@ -64,7 +70,7 @@ function init3DMap() {
     globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
 
-    // Add Nodes (Glowing Spheres)
+    // Add Nodes
     const points = [];
     for (let i = 0; i < 20; i++) {
         const phi = Math.acos(-1 + (2 * i) / 20);
@@ -109,7 +115,7 @@ function init3DMap() {
     animate();
 }
 
-// Add threat marker to 3D map
+// Add threat marker
 function addThreatMarker(lat, lon, severity) {
     if (!globe) return;
 
@@ -126,12 +132,159 @@ function addThreatMarker(lat, lon, severity) {
     globe.add(marker);
     threatMarkers.push(marker);
 
-    // Remove after 10 seconds
     setTimeout(() => {
         globe.remove(marker);
         const index = threatMarkers.indexOf(marker);
         if (index > -1) threatMarkers.splice(index, 1);
     }, 10000);
+}
+
+// --- 3D Pie Chart for Overview ---
+function init3DPieChart() {
+    const container = document.getElementById('pieChart3D');
+    if (!container) return;
+
+    pieChartScene = new THREE.Scene();
+    pieChartCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+    pieChartRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    pieChartRenderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(pieChartRenderer.domElement);
+
+    pieChartCamera.position.set(0, 3, 8);
+    pieChartCamera.lookAt(0, 0, 0);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    pieChartScene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 5, 5);
+    pieChartScene.add(directionalLight);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        pieSlices.forEach(slice => {
+            slice.rotation.y += 0.005;
+        });
+        pieChartRenderer.render(pieChartScene, pieChartCamera);
+    }
+    animate();
+}
+
+function update3DPieChart(data) {
+    if (!pieChartScene) return;
+
+    // Clear existing slices
+    pieSlices.forEach(slice => pieChartScene.remove(slice));
+    pieSlices = [];
+
+    const categories = Object.keys(data);
+    const values = Object.values(data);
+    const total = values.reduce((a, b) => a + b, 0);
+
+    if (total === 0) return;
+
+    const colors = {
+        'CRITICAL': 0xef4444,
+        'HIGH': 0xf59e0b,
+        'MEDIUM': 0x19f1ff,
+        'LOW': 0x22c55e,
+        'OTHER': 0x94a3b8
+    };
+
+    let startAngle = 0;
+    const radius = 2;
+    const depth = 0.5;
+
+    categories.forEach((cat, index) => {
+        const value = values[index];
+        const angle = (value / total) * Math.PI * 2;
+
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.absarc(0, 0, radius, startAngle, startAngle + angle, false);
+        shape.lineTo(0, 0);
+
+        const extrudeSettings = {
+            depth: depth,
+            bevelEnabled: true,
+            bevelThickness: 0.1,
+            bevelSize: 0.1,
+            bevelSegments: 2
+        };
+
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        const material = new THREE.MeshPhongMaterial({
+            color: colors[cat] || colors.OTHER,
+            emissive: colors[cat] || colors.OTHER,
+            emissiveIntensity: 0.3
+        });
+
+        const slice = new THREE.Mesh(geometry, material);
+        slice.position.z = -depth / 2;
+
+        pieChartScene.add(slice);
+        pieSlices.push(slice);
+
+        startAngle += angle;
+    });
+}
+
+// --- 3D Bar Chart for Overview ---
+function init3DBarChart() {
+    const container = document.getElementById('barChart3D');
+    if (!container) return;
+
+    barChartScene = new THREE.Scene();
+    barChartCamera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+    barChartRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    barChartRenderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(barChartRenderer.domElement);
+
+    barChartCamera.position.set(4, 4, 8);
+    barChartCamera.lookAt(0, 0, 0);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    barChartScene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 5, 5);
+    barChartScene.add(directionalLight);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        barChartBars.forEach(bar => {
+            bar.rotation.y += 0.003;
+        });
+        barChartRenderer.render(barChartScene, barChartCamera);
+    }
+    animate();
+}
+
+function update3DBarChart(data) {
+    if (!barChartScene) return;
+
+    // Clear existing bars
+    barChartBars.forEach(bar => barChartScene.remove(bar));
+    barChartBars = [];
+
+    const categories = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const colors = [0xef4444, 0xf59e0b, 0x19f1ff, 0x22c55e];
+
+    categories.forEach((cat, index) => {
+        const value = data[cat] || 0;
+        const height = Math.max(value * 0.5, 0.5);
+
+        const geometry = new THREE.BoxGeometry(0.8, height, 0.8);
+        const material = new THREE.MeshPhongMaterial({
+            color: colors[index],
+            emissive: colors[index],
+            emissiveIntensity: 0.4
+        });
+
+        const bar = new THREE.Mesh(geometry, material);
+        bar.position.set(index * 1.2 - 1.8, height / 2, 0);
+
+        barChartScene.add(bar);
+        barChartBars.push(bar);
+    });
 }
 
 // --- Investigation Graph (D3.js) ---
@@ -226,6 +379,10 @@ async function fetchSummary() {
         // Update Charts
         initSeverityChart(data.by_severity);
         initHistoryChart(data.history);
+
+        // Update 3D Charts with live data
+        update3DPieChart(data.by_severity || {});
+        update3DBarChart(data.by_severity || {});
 
         // Update Funnel
         updateFunnel(data);
@@ -395,14 +552,25 @@ async function performAnalysis(url, body) {
 
 // ===== WebSocket Connection =====
 function connectWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    if (websocket) {
+        try {
+            websocket.close();
+        } catch (e) { }
+    }
 
-    websocket = new WebSocket(wsUrl);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use window.location.host to match the current access method (127.0.0.1 vs localhost)
+    const host = window.location.host;
+    const socketUrl = `${protocol}//${host}/ws`;
+
+    console.log(`[*] Initiating Neural Link to: ${socketUrl}`);
+    websocket = new WebSocket(socketUrl);
 
     websocket.onopen = () => {
         console.log('[WebSocket] Connected to real-time threat feed');
-        notifications.show('Connected to real-time threat intelligence', 'success', 3000);
+        if (window.notifications) {
+            window.notifications.show('Connected to real-time threat intelligence', 'success', 3000);
+        }
         reconnectAttempts = 0;
 
         // Update connection status
@@ -422,11 +590,12 @@ function connectWebSocket() {
     };
 
     websocket.onerror = (error) => {
-        console.error('[WebSocket] Error:', error);
+        console.error('[WebSocket] Connection Error:', error);
     };
 
-    websocket.onclose = () => {
-        console.log('[WebSocket] Connection closed');
+    websocket.onclose = (event) => {
+        console.log(`[WebSocket] Connection closed: ${event.code} ${event.reason}`);
+
         const statusEl = document.getElementById('connectionStatus');
         if (statusEl) {
             statusEl.innerHTML = '<span class="status-dot offline"></span> RECONNECTING...';
@@ -436,10 +605,12 @@ function connectWebSocket() {
         if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-            console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+            console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
             setTimeout(connectWebSocket, delay);
         } else {
-            notifications.show('Real-time connection lost. Falling back to polling.', 'warning');
+            if (window.notifications) {
+                window.notifications.show('Real-time connection lost. Falling back to polling.', 'warning');
+            }
             // Fallback to polling
             setInterval(fetchSummary, 5000);
         }
@@ -537,8 +708,191 @@ statusStyle.textContent = `
 `;
 document.head.appendChild(statusStyle);
 
+// ===== Log Source Management Functions =====
+let logSourceStates = {
+    windows_events: false,
+    web_server_logs: false,
+    network_capture: false
+};
+
+// Initialize log source controls
+function initLogSourceControls() {
+    const sources = ['windows_events', 'web_server_logs', 'network_capture'];
+
+    sources.forEach(source => {
+        const toggle = document.getElementById(`toggle-${source}`);
+        if (toggle) {
+            toggle.addEventListener('change', (e) => toggleLogSource(source, e.target.checked));
+        }
+    });
+
+    // Fetch initial status
+    fetchLogSourceStatus();
+
+    // Poll for status updates every 5 seconds
+    setInterval(fetchLogSourceStatus, 5000);
+}
+
+// Toggle log source on/off
+async function toggleLogSource(sourceName, enableRequested) {
+    try {
+        const response = await fetch(`/ingest/sources/${sourceName}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            // Check if notifications is available
+            if (window.notifications) {
+                window.notifications.show(`Error: ${data.error}`, 'error', 5000);
+            } else {
+                console.error(`Error: ${data.error}`);
+            }
+            // Revert toggle
+            const toggle = document.getElementById(`toggle-${sourceName}`);
+            if (toggle) toggle.checked = !enableRequested;
+            return;
+        }
+
+        // Update state
+        logSourceStates[sourceName] = data.enabled;
+        updateLogSourceUI(sourceName, data.enabled);
+
+        // Show notification
+        const message = data.enabled
+            ? `✅ ${getSourceDisplayName(sourceName)} activated`
+            : `⏸️ ${getSourceDisplayName(sourceName)} deactivated`;
+
+        if (window.notifications) {
+            window.notifications.show(message, data.enabled ? 'success' : 'info', 3000);
+        } else {
+            console.log(message);
+        }
+
+    } catch (error) {
+        console.error(`Error toggling log source ${sourceName}:`, error);
+        const errorMsg = `Failed to toggle ${getSourceDisplayName(sourceName)}`;
+        if (window.notifications) {
+            window.notifications.show(errorMsg, 'error', 4000);
+        } else {
+            console.error(errorMsg);
+        }
+    }
+}
+
+// Fetch current status of all log sources
+async function fetchLogSourceStatus() {
+    try {
+        const response = await fetch('/ingest/sources');
+        const data = await response.json();
+
+        if (data.sources) {
+            Object.keys(data.sources).forEach(sourceName => {
+                const sourceData = data.sources[sourceName];
+                logSourceStates[sourceName] = sourceData.enabled;
+                updateLogSourceUI(sourceName, sourceData.enabled);
+            });
+
+            // Update active count
+            const activeCount = Object.values(logSourceStates).filter(s => s).length;
+            const activeCountEl = document.getElementById('activeSourcesCount');
+            if (activeCountEl) {
+                activeCountEl.textContent = `${activeCount} Active`;
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching log source status:', error);
+    }
+}
+
+// Update UI for a specific log source
+function updateLogSourceUI(sourceName, isActive) {
+    // Update toggle
+    const toggle = document.getElementById(`toggle-${sourceName}`);
+    if (toggle) toggle.checked = isActive;
+
+    // Update status badge
+    const statusBadge = document.getElementById(`status-${sourceName}`);
+    if (statusBadge) {
+        if (isActive) {
+            statusBadge.className = 'status-badge active';
+            statusBadge.innerHTML = '<span class="status-dot"></span> Active';
+        } else {
+            statusBadge.className = 'status-badge inactive';
+            statusBadge.innerHTML = '<span class="status-dot"></span> Inactive';
+        }
+    }
+
+    // Show/hide stats
+    const card = document.querySelector(`[data-source="${sourceName}"]`);
+    if (card) {
+        const statsDiv = card.querySelector('.log-source-stats');
+        if (statsDiv) {
+            statsDiv.style.display = isActive ? 'flex' : 'none';
+        }
+    }
+}
+
+// Configure log source (for file paths, interfaces, etc.)
+async function configureLogSource(sourceName) {
+    const configInput = document.getElementById(`config-${sourceName}`);
+    if (!configInput) return;
+
+    const configValue = configInput.value.trim();
+    if (!configValue) {
+        notifications.show('Please enter a configuration value', 'warning', 3000);
+        return;
+    }
+
+    // TODO: Implement API endpoint for configuration
+    notifications.show(`Configuration saved for ${getSourceDisplayName(sourceName)}`, 'success', 3000);
+}
+
+// Get human-readable display name
+function getSourceDisplayName(sourceName) {
+    const names = {
+        'windows_events': 'Windows Event Viewer',
+        'web_server_logs': 'Web Server Logs',
+        'network_capture': 'Network Capture'
+    };
+    return names[sourceName] || sourceName;
+}
+
+// Make configureLogSource globally available
+window.configureLogSource = configureLogSource;
+
+// Handle log source WebSocket updates
+function handleLogSourceUpdate(data) {
+    if (data.source && data.stats) {
+        const source = data.source;
+
+        // Update event/packet count
+        const eventsEl = document.getElementById(`events-${source}`);
+        if (eventsEl) eventsEl.textContent = data.stats.events || 0;
+
+        // Update threat count
+        const threatsEl = document.getElementById(`threats-${source}`);
+        if (threatsEl) threatsEl.textContent = data.stats.threats || 0;
+    }
+}
+
+// Extend WebSocket message handler to include log source updates
+const originalHandleWebSocketMessage = handleWebSocketMessage;
+handleWebSocketMessage = function (message) {
+    originalHandleWebSocketMessage(message);
+
+    if (message.type === 'log_source_update') {
+        handleLogSourceUpdate(message.data);
+    }
+};
+
 window.onload = () => {
     initNavigation();
+    init3DPieChart();
+    init3DBarChart();
     fetchSummary();
     connectWebSocket(); // Use WebSocket instead of polling
+    initLogSourceControls(); // Initialize log source management
 };

@@ -861,3 +861,311 @@ input:checked+.slider:before {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== Log Sources Management Styles ===== */
+.log-sources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.log-source-card {
+    background: var(--bg-input);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.log-source-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(25, 241, 255, 0.15);
+}
+
+.log-source-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.log-source-icon {
+    font-size: 32px;
+    min-width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(25, 241, 255, 0.1), rgba(14, 165, 233, 0.1));
+    border-radius: 12px;
+}
+
+.log-source-info {
+    flex: 1;
+}
+
+.log-source-info h5 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.log-source-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Log Source Toggle Switch */
+.log-source-toggle {
+    position: relative;
+    display: inline-block;
+    width: 56px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.log-source-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #475569;
+    transition: 0.4s;
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked+.toggle-slider {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    box-shadow: 0 0 15px rgba(25, 241, 255, 0.5);
+}
+
+input:checked+.toggle-slider:before {
+    transform: translateX(28px);
+}
+
+/* Status Badges */
+.log-source-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.inactive {
+    background: rgba(71, 85, 105, 0.3);
+    color: #94a3b8;
+}
+
+.status-badge.active {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--success);
+    animation: pulse 2s infinite;
+}
+
+.status-badge.error {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.admin-badge {
+    font-size: 10px;
+    color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Log Source Configuration */
+.log-source-config {
+    display: flex;
+    gap: 8px;
+}
+
+.config-input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-main);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.config-input:focus {
+    border-color: var(--accent-primary);
+}
+
+.config-input::placeholder {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.config-btn {
+    background: linear-gradient(135deg, rgba(25, 241, 255, 0.2), rgba(14, 165, 233, 0.2));
+    border: 1px solid var(--accent-primary);
+    color: var(--accent-primary);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.config-btn:hover {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    color: var(--bg-sidebar);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(25, 241, 255, 0.3);
+}
+
+/* Log Source Statistics */
+.log-source-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent-primary);
+}
+
+/* Log Sources Info Panels */
+.log-sources-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.info-block {
+    background: rgba(25, 241, 255, 0.05);
+    border: 1px solid rgba(25, 241, 255, 0.15);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.info-block.warning {
+    background: rgba(245, 158, 11, 0.05);
+    border-color: rgba(245, 158, 11, 0.15);
+}
+
+.info-block h5 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 12px;
+}
+
+.info-block p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 8px;
+}
+
+.info-block ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+}
+
+.info-block li {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.8;
+    padding-left: 20px;
+    position: relative;
+}
+
+.info-block li:before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.info-block strong {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* Responsive Log Sources */
+@media (max-width: 1200px) {
+    .log-sources-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .log-sources-info {
+        grid-template-columns: 1fr;
+    }
+}

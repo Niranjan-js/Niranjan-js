@@ -71,6 +71,43 @@ python run.py
 
 Access the dashboard at: **http://127.0.0.1:8081/dashboard**
 
+## 🔴 Live Log Ingestion
+
+CyberGuard AI supports **real-time threat detection** from live log sources, replacing manual log injection with automated monitoring:
+
+### Supported Log Sources
+
+1. **Windows Event Viewer** 🪟
+   - Monitors Security Event Log in real-time
+   - Detects: Failed logins, privilege escalation, suspicious processes
+   - Requires: **Administrator privileges**
+
+2. **Web Server Logs** 🌐 (Apache / Nginx)
+   - Parses access logs for web attacks
+   - Detects: SQL injection, XSS, path traversal, scanner activity
+   - Requires: Log file path configuration
+
+3. **Network Traffic Capture** 📡 (Scapy)
+   - Captures and analyzes packet metadata
+   - Detects: Port scans, SYN floods, unusual traffic patterns
+   - Requires: **Administrator privileges**
+
+### Enable Live Log Sources
+
+1. Navigate to **Settings** module in dashboard
+2. Find **Live Log Ingestion Sources** section
+3. Toggle switches to enable/disable sources
+4. Configure paths/interfaces as needed
+5. Monitor real-time statistics
+
+### Testing
+
+See comprehensive guides:
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Step-by-step testing procedures
+- **[LAB_ATTACK_SCENARIOS.md](LAB_ATTACK_SCENARIOS.md)** - Safe attack testing (lab only)
+
+
+
 ## 📁 Project Structure
 
 ```text

@@ -23,13 +23,26 @@ from agents.ip_analyzer.agent import IPRangeAnalyzerAgent
 # ===== Import Dashboard Router =====
 from api.dashboard import router as dashboard_router
 
+# ===== Import Log Ingestors =====
+try:
+    from log_ingestors import WindowsEventIngestor, WebServerLogParser, NetworkCapture
+    LOG_INGESTORS_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Log ingestors not available: {e}")
+    import traceback
+    traceback.print_exc()
+    LOG_INGESTORS_AVAILABLE = False
+
 # ===== Initialize FastAPI App =====
 app = FastAPI(title="CyberGuard AI: Multi-Agent Detection")
 
 background_tasks = set()
+main_loop = None
 
 @app.on_event("startup")
 async def start_auto_logs():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
     task = asyncio.create_task(generate_logs())
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
@@ -55,11 +68,105 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join("api", "templates"))
 
 # ===== Initialize Agents =====
-log_agent = LogAnalysisAgent()
-email_agent = EmailVerificationAgent()
-ip_agent = IPRangeAnalyzerAgent()
+log_analyzer = LogAnalysisAgent()
 correlation_agent = CorrelationAgent()
 llm_agent = LLMReasoningAgent()
+email_agent = EmailVerificationAgent()
+ip_agent = IPRangeAnalyzerAgent()
+
+# ===== Initialize Log Ingestors =====
+log_ingestors = {
+    "windows_events": None,
+    "web_server_logs": None,
+    "network_capture": None
+}
+
+log_sources_enabled = {
+    "windows_events": False,
+    "web_server_logs": False,
+    "network_capture": False
+}
+
+# Statistics for live log sources
+log_source_stats = {
+    "windows_events": {"events": 0, "threats": 0},
+    "web_server_logs": {"events": 0, "threats": 0},
+    "network_capture": {"events": 0, "threats": 0}
+}
+
+def handle_live_log(log_data: dict):
+    """Handle incoming live log from ingestors (called from background threads)"""
+    try:
+        # Use the stored main event loop
+        global main_loop
+        if main_loop is None:
+            print("ERROR: Main loop not initialized yet")
+            return
+            
+        source = log_data.get("source", "live_ingestion")
+        
+        # Update event stats
+        if source in log_source_stats:
+            log_source_stats[source]["events"] += 1
+            
+        # Convert to log format and analyze
+        log_text = log_data.get("message", "")
+        
+        # Run async analysis in the main loop
+        future = asyncio.run_coroutine_threadsafe(log_analyzer.analyze(log_text), main_loop)
+        findings = future.result(timeout=10)
+        
+        if findings:
+            # Process through existing pipeline
+            correlated = correlation_agent.correlate(findings)
+            
+            # Update threat stats
+            if source in log_source_stats and correlated:
+                log_source_stats[source]["threats"] += len(correlated)
+            
+            # Run async reasoning in the main loop
+            reason_future = asyncio.run_coroutine_threadsafe(llm_agent.reason(correlated), main_loop)
+            decisions = reason_future.result(timeout=10)
+            
+            # Update dashboard state
+            from api.dashboard import state
+            state.update({
+                "raw_findings": [str(f) for f in findings],
+                "correlated_attacks": correlated,
+                "llm_decisions": decisions,
+                "source": source
+            })
+            
+            # Broadcast via WebSocket safely
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.broadcast_threat_update({
+                    "new_threats": correlated,
+                    "source": source
+                }),
+                main_loop
+            )
+            
+            # Send alert for critical threats
+            for attack in correlated:
+                if attack.get("severity") in ["CRITICAL", "HIGH"]:
+                    asyncio.run_coroutine_threadsafe(
+                        ws_manager.broadcast_alert(
+                            "live_threat",
+                            f"Live threat detected: {attack.get('attack', 'Unknown')} from {log_data.get('source_ip', 'unknown')}",
+                            attack.get("severity", "HIGH")
+                        ),
+                        main_loop
+                    )
+        
+        # Always broadcast log source stats update
+        if source in log_source_stats:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.broadcast_log_source_update(source, log_source_stats[source]),
+                main_loop
+            )
+            
+    except Exception as e:
+        print(f"Error handling live log: {e}")
 
 # ===== Request Models =====
 class LogRequest(BaseModel):
@@ -113,7 +220,7 @@ async def _process_all(findings: List, source: str):
 @app.post("/analyze/logs")
 async def analyze_logs(request: LogRequest):
     raw_logs_text = "\n".join(request.logs)
-    findings = await log_agent.analyze(raw_logs_text)
+    findings = await log_analyzer.analyze(raw_logs_text)
     return await _process_all(findings, request.source)
 
 @app.post("/analyze/email")
@@ -146,10 +253,128 @@ app.include_router(dashboard_router)
 # ===== Serve Dashboard Page =====
 @app.get("/dashboard")
 def dashboard(request: Request):
+    import time
+    version = int(time.time())
     return templates.TemplateResponse(
         "index.html",
-        {"request": request}
+        {"request": request, "version": version}
     )
+
+# ===== Log Source Management Endpoints =====
+@app.get("/ingest/sources")
+async def get_log_sources():
+    """Get status of all log sources"""
+    return {
+        "available": LOG_INGESTORS_AVAILABLE,
+        "sources": {
+            "windows_events": {
+                "enabled": log_sources_enabled["windows_events"],
+                "description": "Windows Security Event Log",
+                "requires_admin": True
+            },
+            "web_server_logs": {
+                "enabled": log_sources_enabled["web_server_logs"],
+                "description": "Apache/Nginx Web Server Logs",
+                "requires_admin": False
+            },
+            "network_capture": {
+                "enabled": log_sources_enabled["network_capture"],
+                "description": "Network Traffic Capture",
+                "requires_admin": True
+            }
+        }
+    }
+
+@app.post("/ingest/sources/{source_name}/toggle")
+async def toggle_log_source(source_name: str):
+    """Enable or disable a log source"""
+    if not LOG_INGESTORS_AVAILABLE:
+        return {"error": "Log ingestors not available. Install dependencies: pip install pywin32 watchdog scapy"}
+    
+    if source_name not in log_sources_enabled:
+        return {"error": f"Unknown source: {source_name}"}
+    
+    current_state = log_sources_enabled[source_name]
+    new_state = not current_state
+    
+    try:
+        if source_name == "windows_events":
+            if new_state:
+                # Start Windows Event ingestor
+                if log_ingestors["windows_events"] is None:
+                    log_ingestors["windows_events"] = WindowsEventIngestor(callback=handle_live_log)
+                log_ingestors["windows_events"].start()
+                log_sources_enabled["windows_events"] = True
+                message = "Windows Event Viewer monitoring started"
+            else:
+                # Stop Windows Event ingestor
+                if log_ingestors["windows_events"]:
+                    log_ingestors["windows_events"].stop()
+                log_sources_enabled["windows_events"] = False
+                message = "Windows Event Viewer monitoring stopped"
+        
+        elif source_name == "web_server_logs":
+            if new_state:
+                # Start web server log parser
+                if log_ingestors["web_server_logs"] is None:
+                    log_ingestors["web_server_logs"] = WebServerLogParser(callback=handle_live_log)
+                
+                # Default log paths (user can configure via environment or config file)
+                default_log_paths = [
+                    r"C:\logs\access.log",  # Custom path
+                    r"C:\Apache24\logs\access.log",  # Apache Windows
+                    r"C:\nginx\logs\access.log",  # Nginx Windows
+                    r"/var/log/apache2/access.log",  # Apache Linux
+                    r"/var/log/nginx/access.log"  # Nginx Linux
+                ]
+                
+                # Check which paths exist and use them
+                import os
+                existing_paths = [p for p in default_log_paths if os.path.exists(p)]
+                
+                if existing_paths:
+                    log_ingestors["web_server_logs"].start(existing_paths)
+                    log_sources_enabled["web_server_logs"] = True
+                    message = f"Web server log monitoring started for {len(existing_paths)} file(s): {', '.join(existing_paths)}"
+                else:
+                    log_sources_enabled["web_server_logs"] = False
+                    message = "No web server log files found. Create C:\\logs\\access.log or configure Apache/Nginx paths"
+                    return {
+                        "error": "No log files found",
+                        "message": message,
+                        "enabled": False
+                    }
+            else:
+                if log_ingestors["web_server_logs"]:
+                    log_ingestors["web_server_logs"].stop()
+                log_sources_enabled["web_server_logs"] = False
+                message = "Web server log monitoring stopped"
+        
+        elif source_name == "network_capture":
+            if new_state:
+                # Start network capture
+                if log_ingestors["network_capture"] is None:
+                    log_ingestors["network_capture"] = NetworkCapture(callback=handle_live_log)
+                log_ingestors["network_capture"].start()
+                log_sources_enabled["network_capture"] = True
+                message = "Network traffic capture started"
+            else:
+                if log_ingestors["network_capture"]:
+                    log_ingestors["network_capture"].stop()
+                log_sources_enabled["network_capture"] = False
+                message = "Network traffic capture stopped"
+        
+        return {
+            "source": source_name,
+            "enabled": log_sources_enabled[source_name],
+            "message": message
+        }
+    
+    except Exception as e:
+        return {
+            "error": str(e),
+            "message": "Failed to toggle log source. Make sure you're running as Administrator."
+        }
 
 # ===== WebSocket Endpoint =====
 @app.websocket("/ws")

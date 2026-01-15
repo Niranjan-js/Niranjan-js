@@ -5,11 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CyberGuard AI | Next-Gen Threat Intel</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/static/notification_system.js"></script>
+    <script src="/static/notification_system.js?v={{ version }}"></script>
 </head>
 
 <body>
@@ -84,20 +84,15 @@
                     <div class="grid-col-1">
                         <div class="glass-card chart-card">
                             <div class="card-header">
-                                <h4>Alerts Distribution</h4>
+                                <h4>🎯 3D Threat Distribution</h4>
                             </div>
-                            <div class="chart-container-donut"><canvas id="severityChart"></canvas></div>
+                            <div id="pieChart3D" style="height: 250px;"></div>
                         </div>
-                        <div class="glass-card stat-list-card">
+                        <div class="glass-card chart-card">
                             <div class="card-header">
-                                <h4>High-Risk Entities</h4>
+                                <h4>📊 Live 3D Severity Chart</h4>
                             </div>
-                            <div class="entity-list" id="highRiskEntities">
-                                <div class="mitre-item"><span>EC2_Instance_04</span><span class="badge"
-                                        style="background:var(--danger)">CRITICAL</span></div>
-                                <div class="mitre-item"><span>AdminUser_Root</span><span class="badge"
-                                        style="background:var(--warning)">HIGH</span></div>
-                            </div>
+                            <div id="barChart3D" style="height: 250px;"></div>
                         </div>
                     </div>
                     <div class="grid-col-2">
@@ -291,6 +286,148 @@
                                     type="checkbox" checked><span class="slider"></span></label></div>
                     </div>
                 </div>
+
+                <!-- Live Log Ingestion Sources -->
+                <div class="glass-card" style="margin-top: 24px;">
+                    <div class="card-header">
+                        <h4>🔴 Live Log Ingestion Sources</h4>
+                        <span class="badge" id="activeSourcesCount">0 Active</span>
+                    </div>
+                    <div class="log-sources-grid">
+                        <!-- Windows Event Viewer -->
+                        <div class="log-source-card" data-source="windows_events">
+                            <div class="log-source-header">
+                                <div class="log-source-icon">🪟</div>
+                                <div class="log-source-info">
+                                    <h5>Windows Event Viewer</h5>
+                                    <p class="log-source-desc">Security Event Log Monitoring</p>
+                                </div>
+                                <label class="log-source-toggle">
+                                    <input type="checkbox" id="toggle-windows_events">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="log-source-status">
+                                <span class="status-badge inactive" id="status-windows_events">
+                                    <span class="status-dot"></span> Inactive
+                                </span>
+                                <span class="admin-badge">⚠️ Requires Admin</span>
+                            </div>
+                            <div class="log-source-stats" style="display: none;">
+                                <div class="stat-item">
+                                    <span class="stat-label">Events</span>
+                                    <span class="stat-value" id="events-windows_events">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Threats</span>
+                                    <span class="stat-value" id="threats-windows_events">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Web Server Logs -->
+                        <div class="log-source-card" data-source="web_server_logs">
+                            <div class="log-source-header">
+                                <div class="log-source-icon">🌐</div>
+                                <div class="log-source-info">
+                                    <h5>Web Server Logs</h5>
+                                    <p class="log-source-desc">Apache / Nginx Log Parser</p>
+                                </div>
+                                <label class="log-source-toggle">
+                                    <input type="checkbox" id="toggle-web_server_logs">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="log-source-status">
+                                <span class="status-badge inactive" id="status-web_server_logs">
+                                    <span class="status-dot"></span> Inactive
+                                </span>
+                            </div>
+                            <div class="log-source-config" style="margin-top: 12px;">
+                                <input type="text" id="config-web_server_logs" placeholder="/var/log/apache2/access.log"
+                                    class="config-input">
+                                <button class="config-btn" onclick="configureLogSource('web_server_logs')">
+                                    Set Path
+                                </button>
+                            </div>
+                            <div class="log-source-stats" style="display: none;">
+                                <div class="stat-item">
+                                    <span class="stat-label">Events</span>
+                                    <span class="stat-value" id="events-web_server_logs">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Threats</span>
+                                    <span class="stat-value" id="threats-web_server_logs">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Network Capture -->
+                        <div class="log-source-card" data-source="network_capture">
+                            <div class="log-source-header">
+                                <div class="log-source-icon">📡</div>
+                                <div class="log-source-info">
+                                    <h5>Network Traffic Capture</h5>
+                                    <p class="log-source-desc">Packet Analysis (Scapy)</p>
+                                </div>
+                                <label class="log-source-toggle">
+                                    <input type="checkbox" id="toggle-network_capture">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="log-source-status">
+                                <span class="status-badge inactive" id="status-network_capture">
+                                    <span class="status-dot"></span> Inactive
+                                </span>
+                                <span class="admin-badge">⚠️ Requires Admin</span>
+                            </div>
+                            <div class="log-source-config" style="margin-top: 12px;">
+                                <input type="text" id="config-network_capture"
+                                    placeholder="Interface (e.g., eth0, leave empty for all)" class="config-input">
+                                <button class="config-btn" onclick="configureLogSource('network_capture')">
+                                    Set Interface
+                                </button>
+                            </div>
+                            <div class="log-source-stats" style="display: none;">
+                                <div class="stat-item">
+                                    <span class="stat-label">Packets</span>
+                                    <span class="stat-value" id="events-network_capture">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Port Scans</span>
+                                    <span class="stat-value" id="threats-network_capture">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Log Sources Info Panel -->
+                    <div class="log-sources-info">
+                        <div class="info-block">
+                            <h5>ℹ️ Live Log Ingestion</h5>
+                            <p>Enable real-time log sources to replace manual log injection with live threat detection
+                                from:</p>
+                            <ul>
+                                <li><strong>Windows Events:</strong> Failed logins, privilege escalation, suspicious
+                                    processes</li>
+                                <li><strong>Web Server:</strong> SQL injection, XSS, path traversal, scanner detection
+                                </li>
+                                <li><strong>Network Capture:</strong> Port scans, SYN floods, unusual traffic patterns
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="info-block warning">
+                            <h5>⚠️ Important Notes</h5>
+                            <ul>
+                                <li>Windows Events and Network Capture require <strong>Administrator privileges</strong>
+                                </li>
+                                <li>Web Server Logs require configured log file paths</li>
+                                <li>All sources use the SIEM pipeline: Logs → Parser → Detection → AI → Dashboard</li>
+                                <li>Real-time updates via WebSocket (&lt;100ms latency)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Shared Interactive Zone (Only shows when needed or at bottom) -->
@@ -329,7 +466,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="/static/dashboard.js"></script>
+    <script src="/static/dashboard.js?v={{ version }}"></script>
 </body>
 
 </html>

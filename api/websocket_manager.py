@@ -95,6 +95,18 @@ class ConnectionManager:
         }
         await self.broadcast(message)
     
+    async def broadcast_log_source_update(self, source_name: str, stats: Dict[str, Any]):
+        """Broadcast log source statistics update"""
+        message = {
+            "type": "log_source_update",
+            "data": {
+                "source": source_name,
+                "stats": stats
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        await self.broadcast(message)
+    
     def get_stats(self) -> Dict[str, Any]:
         """Get connection statistics"""
         return {
